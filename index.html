@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cálculo de Diámetros de Cañerías</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+</head>
+
+<body>
+
+    <!-- Encabezado fijo -->
+    <header class="site-header" id="main-header">
+        <div class="logo">
+            <img src="img/logo_gas_color.png" alt="Logo de mi sitio">
+            <h1>Cálculo de Diámetros de Cañerías</h1>
+        </div>
+
+        <!-- Botón hamburguesa -->
+        <div class="menu-toggle" id="menu-toggle">&#9776;</div>
+
+        <nav class="navbar" id="navbar">
+            <ul>
+                <li><a href="#">Inicio</a></li>
+                <li><a href="#">Calculadora</a></li>
+                <li><a href="#">Guías</a></li>
+                <li><a href="#">Contacto</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <!-- Contenido principal -->
+    <div class="container">
+
+        <div id="cargando-datos">Cargando datos de la tabla...</div>
+
+        <main>
+            <!-- Formulario de datos -->
+            <div class="form-section">
+                <h2>Datos del Tramo</h2>
+                <div class="form-group">
+                    <label for="tramo-nombre">Nombre del Tramo</label>
+                    <input type="text" id="tramo-nombre" placeholder="Ej: Tramo principal">
+                </div>
+
+                <div class="form-group">
+                    <label for="tramo-longitud">Longitud Real (m)</label>
+                    <input type="number" id="tramo-longitud" step="0.01" placeholder="0.00">
+                </div>
+
+                <div class="form-group">
+                    <label for="tramo-consumo">Consumo (Kcal/h)</label>
+                    <input type="number" id="tramo-consumo" placeholder="0">
+                    <div style="display: flex; gap: 10px; margin-top: 10px;">
+                        <button type="button" id="agregar-consumo-btn" class="btn secondary">Agregar Consumo</button>
+                        <button type="button" id="calcular-btn" class="btn primary">Calcular</button>
+                    </div>
+                </div>
+
+                <div id="consumos-agregados">
+                    <h4>Consumos Registrados:</h4>
+                    <ul id="lista-consumos"></ul>
+                    <p><strong>Total acumulado: <span id="total-consumo">0</span> Kcal/h</strong></p>
+                </div>
+            </div>
+
+            <!-- Resultados -->
+            <div class="form-section" id="resultados-section">
+                <h2>Resultados del Cálculo</h2>
+                <div class="resultados-container" id="resultados-actuales"></div>
+            </div>
+
+            <!-- Resumen Final -->
+            <div class="form-section" id="resumen-final-section">
+                <h2>Resumen Final</h2>
+                <div class="resumen-container" id="resumen-final"></div>
+                <div class="button-group">
+                    <button class="btn secondary" id="descargar-btn">Descargar Datos</button>
+                    <button class="btn primary" id="copiar-btn">Copiar al Portapapeles</button>
+                </div>
+            </div>
+
+            <!-- Sección de cálculo de diámetro equivalente -->
+            <div class="form-section" id="equivalente-section" style="display: none;">
+                <h2>Cálculo de Diámetro Equivalente</h2>
+                <div class="tramo-seleccionado">
+                    <h3 id="nombre-tramo-actual"></h3>
+                    <p>Diámetro actual: <span id="diametro-actual"></span></p>
+                </div>
+
+                <div class="accesorios-container">
+                    <h3>Seleccione los accesorios:</h3>
+                    <div class="accesorios-grid">
+                        <button class="accesorio-btn" data-valor="14" data-nombre="Codo 45°">
+                            <img src="img/codo45.png" alt="Codo 45°">
+                            <span>Codo 45° (14mm)</span>
+                        </button>
+                        <button class="accesorio-btn" data-valor="30" data-nombre="Codo 90°">
+                            <img src="img/codo90.png" alt="Codo 90°">
+                            <span>Codo 90° (30mm)</span>
+                        </button>
+                        <button class="accesorio-btn" data-valor="20" data-nombre="Curva">
+                            <img src="img/curva.png" alt="Curva">
+                            <span>Curva (20mm)</span>
+                        </button>
+                        <button class="accesorio-btn" data-valor="20" data-nombre="Te flujo a través">
+                            <img src="img/te_flujo.png" alt="Te flujo">
+                            <span>Te flujo (20mm)</span>
+                        </button>
+                        <button class="accesorio-btn" data-valor="60" data-nombre="Te flujo a 90°">
+                            <img src="img/te90.png" alt="Te 90°">
+                            <span>Te 90° (60mm)</span>
+                        </button>
+                        <button class="accesorio-btn" data-valor="333" data-nombre="Válvula globo">
+                            <img src="img/valvula_globo.png" alt="Válvula globo">
+                            <span>Válvula globo (333mm)</span>
+                        </button>
+                        <button class="accesorio-btn" data-valor="7" data-nombre="Válvula esclusa">
+                            <img src="img/valvula_esclusa.png" alt="Válvula esclusa">
+                            <span>Válvula esclusa (7mm)</span>
+                        </button>
+                        <button class="accesorio-btn" data-valor="100" data-nombre="Válvula Macho 1/4 vuelta / Esférica">
+                            <img src="img/valvula_macho.png" alt="Válvula Macho">
+                            <span>Válvula Macho (100mm)</span>
+                        </button>
+                        <button class="accesorio-btn" data-valor="10" data-nombre="Reducción">
+                            <img src="img/reduccion.png" alt="Reducción">
+                            <span>Reducción (10mm)</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="accesorios-agregados">
+                    <h4>Accesorios agregados:</h4>
+                    <ul id="lista-accesorios"></ul>
+                    <p><strong>Total equivalente: <span id="total-equivalente">0</span> mm</strong></p>
+                </div>
+
+                <div class="button-group" id="botonera-equivalente">
+                    <!-- El botón de copiar se insertará aquí dinámicamente si hay tramos guardados -->
+                    <button class="btn secondary" id="siguiente-tramo-btn">Siguiente Tramo</button>
+                    <button class="btn primary" id="calcular-equivalente-btn">Calcular Diámetro Equivalente</button>
+                </div>
+            </div>
+
+            <!-- Resultados de diámetro equivalente -->
+            <div class="form-section" id="resultado-equivalente-section" style="display: none;">
+                <h2>Resultado Diámetro Equivalente</h2>
+                <div class="resultados-container" id="resultados-equivalente"></div>
+            </div>
+
+            <!-- Botones de control -->
+            <div class="button-group">
+                <button class="btn cancel" id="cancelar-btn">Cancelar</button>
+                <!-- Removido el botón "Calcular" duplicado. El botón "Mostrar Resumen" lleva al mismo flujo. -->
+                <button class="btn primary" id="finalizar-btn">Mostrar Resumen</button>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal para diámetro de accesorios -->
+    <div id="modal-diametro" class="modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h3>Ingresar diámetro para <span id="nombre-accesorio-modal"></span></h3>
+            <div class="form-group">
+                <label for="diametro-accesorio">Diámetro adoptado (mm)</label>
+                <input type="number" id="diametro-accesorio" step="0.1" min="0">
+            </div>
+            <button id="confirmar-diametro-btn" class="btn primary">Confirmar</button>
+        </div>
+    </div>
+
+    <!-- Pie de página -->
+    <footer class="site-footer">
+        <p>&copy; 2025 - Herramienta para el Cálculo de Diámetro de Cañerías de gas natural, por tramo | Desarrollado
+            por Julio "Lito" Acuña</p>
+        <p>Contacto: <a href="mailto:lititosalta@gmail.com">lititosalta@gmail.com</a></p>
+    </footer>
+
+    <script src="script.js"></script>
+    <script>
+        // Efecto de achicar el header al hacer scroll
+        window.addEventListener("scroll", function () {
+            const header = document.getElementById("main-header");
+            if (window.scrollY > 50) {
+                header.classList.add("shrink");
+            } else {
+                header.classList.remove("shrink");
+            }
+        });
+
+        // Menú hamburguesa
+        const menuToggle = document.getElementById("menu-toggle");
+        const navbar = document.getElementById("navbar");
+
+        menuToggle.addEventListener("click", () => {
+            navbar.classList.toggle("active");
+        });
+        
+        // Las funciones copiarAccesoriosDeTramo y mostrarModalSeleccionTramo
+        // se han movido a script.js para mejor organización.
+        // Por lo tanto, se han eliminado de este bloque para evitar duplicación e interferencias.
+    </script>
+</body>
+
+</html>
