@@ -1,2 +1,3 @@
-# calculo_caneria_30_por_ciento
-# diametro_Gas_Natural
+# Cálculo Diámetro Cañería de Gas
+# Método del 30 por ciento
+# Método Equivalente
