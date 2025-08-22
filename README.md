@@ -52,6 +52,8 @@ Esta es una aplicación web interactiva diseñada para ingenieros, técnicos y e
     └── valvula_macho.png # Imágenes de los accesorios.
     ## Modo de Uso
 
+## Modo de Uso 🚶
+
 1.  **Ingresar Tramo**: En la sección "Datos del Tramo", complete el nombre, la longitud real y el consumo de Kcal/h. Puede agregar varios consumos por tramo.
 2.  **Agregar Tramo**: Haga clic en "Agregar Tramo" para guardar la información y pasar al siguiente.
 3.  **Finalizar y Calcular**: Una vez que haya ingresado todos los tramos, haga clic en "Finalizar Tramos y Calcular".
