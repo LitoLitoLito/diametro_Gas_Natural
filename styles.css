@@ -100,7 +100,7 @@ input[type="number"]:focus {
     display: flex;
     gap: 15px;
     margin-top: 20px;
-    flex-wrap: wrap; /* Permite que los botones se envuelvan en pantallas pequeñas */
+    flex-wrap: wrap;
 }
 
 .btn {
@@ -111,11 +111,11 @@ input[type="number"]:focus {
     font-weight: 500;
     cursor: pointer;
     transition: all 0.3s;
-    flex: 1; /* Permite que los botones se expandan en el grupo */
-    min-width: 150px; /* Ancho mínimo para que no se achiquen demasiado */
-    justify-content: center; /* Centra el texto en el botón */
-    align-items: center; /* Centra el texto verticalmente */
-    display: flex; /* Para centrar contenido */
+    flex: 1;
+    min-width: 150px;
+    justify-content: center;
+    align-items: center;
+    display: flex;
 }
 
 .btn.primary {
@@ -166,77 +166,6 @@ input[type="number"]:focus {
     color: var(--secondary-color);
 }
 
-#resultados-section {
-    display: none;
-}
-
-.resultados-container {
-    background-color: white;
-    border: 1px solid #e1e1e1;
-    border-radius: 5px;
-    padding: 15px;
-}
-
-.resultado-item {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 8px;
-    padding-bottom: 8px;
-    border-bottom: 1px dashed #eee;
-}
-
-.resultado-item:last-child {
-    border-bottom: none;
-    margin-bottom: 0;
-}
-
-.resultado-label {
-    font-weight: 500;
-    color: var(--dark-gray);
-}
-
-.resultado-valor {
-    font-weight: 600;
-    color: var(--primary-color);
-}
-
-.diametro {
-    font-weight: bold;
-    color: var(--secondary-color);
-}
-
-#resumen-final-section {
-    display: none;
-}
-
-#resumen-final {
-    max-height: 400px;
-    overflow-y: auto;
-}
-
-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 15px;
-    font-size: 0.9em;
-}
-
-th, td {
-    padding: 10px 12px;
-    text-align: left;
-    border-bottom: 1px solid #ddd;
-}
-
-th {
-    background-color: var(--primary-color);
-    color: white;
-    font-weight: 500;
-}
-
-tr:hover {
-    background-color: #f5f5f5;
-}
-
 .empty-message {
     text-align: center;
     color: var(--dark-gray);
@@ -278,7 +207,7 @@ tr:hover {
 }
 
 body {
-    padding-top: 120px; /* espacio para el header fijo */
+    padding-top: 120px;
 }
 
 .site-header.shrink {
@@ -454,9 +383,9 @@ body {
     font-size: 0.9em;
     border-bottom: 1px dashed #ccc;
     padding: 3px 0;
-    display: flex; /* Para alinear el texto y el botón de eliminar */
+    display: flex;
     align-items: center;
-    justify-content: space-between; /* Para empujar el botón a la derecha */
+    justify-content: space-between;
 }
 
 #total-equivalente {
@@ -465,32 +394,41 @@ body {
 }
 
 /* ==== Tabla de Resultados Equivalentes ==== */
-#resultado-equivalente-section table {
+#resultado-equivalente-section table,
+#resumen-final-section table,
+#lista-tramos-section table {
     width: 100%;
     border-collapse: collapse;
     margin-top: 15px;
 }
 
 #resultado-equivalente-section th,
-#resultado-equivalente-section td {
+#resultado-equivalente-section td,
+#resumen-final-section th,
+#resumen-final-section td,
+#lista-tramos-section th,
+#lista-tramos-section td {
     border: 1px solid #ddd;
     padding: 8px;
     text-align: center;
 }
 
-#resultado-equivalente-section th {
+#resultado-equivalente-section th,
+#resumen-final-section th,
+#lista-tramos-section th {
     background-color: #007bff;
     color: #fff;
 }
 
-#resultado-equivalente-section td.diametro {
+#resultado-equivalente-section td.diametro,
+#resumen-final-section td.diametro {
     font-weight: bold;
     color: #28a745;
 }
 
 /* Modal base styles - hidden by default */
 .modal {
-    display: none; /* Crucial: Escondido por defecto */
+    display: none;
     position: fixed;
     z-index: 2000;
     left: 0;
@@ -498,10 +436,8 @@ body {
     width: 100%;
     height: 100%;
     background-color: rgba(0,0,0,0.5);
-    /* Estas propiedades se aplicarán solo cuando se agregue la clase .is-active */
 }
 
-/* Clase para mostrar el modal con flexbox para centrado */
 .modal.is-active {
     display: flex;
     justify-content: center;
@@ -510,7 +446,7 @@ body {
 
 .modal-content {
     background-color: #fff;
-    margin: auto; /* Centra el modal vertical y horizontalmente */
+    margin: auto;
     padding: 20px;
     border-radius: 8px;
     width: 90%;
@@ -566,15 +502,15 @@ body {
     color: white;
     border: none;
     border-radius: 50%;
-    width: 24px; /* Aumentar tamaño para mejor clic */
-    height: 24px; /* Aumentar tamaño para mejor clic */
-    font-size: 14px; /* Aumentar tamaño de la 'x' */
+    width: 24px;
+    height: 24px;
+    font-size: 14px;
     line-height: 1;
     padding: 0;
     margin-left: 8px;
     cursor: pointer;
     transition: all 0.2s;
-    flex-shrink: 0; /* Evita que el botón se achique si el texto es largo */
+    flex-shrink: 0;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -588,17 +524,15 @@ body {
 /* Estilo para el botón de copiar accesorios */
 #copiar-accesorios-btn {
     margin-right: 10px;
-    background-color: #f39c12; /* Color naranja */
+    background-color: #f39c12;
 }
 
 #copiar-accesorios-btn:hover {
-    background-color: #e67e22; /* Tono más oscuro al pasar el ratón */
+    background-color: #e67e22;
 }
-
 
 /* Asegurar que los botones en los form-group tengan el mismo estilo */
 .form-group .btn {
     margin-top: 0;
     flex: 1;
 }
-

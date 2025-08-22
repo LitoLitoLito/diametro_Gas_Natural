@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cálculo de Diámetros de Cañerías</title>
+    <title>Cálculo de Diámetros de Cañerías - Método Equivalente</title>
     <link rel="stylesheet" href="styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -17,7 +17,7 @@
     <header class="site-header" id="main-header">
         <div class="logo">
             <img src="img/logo_gas_color.png" alt="Logo de mi sitio">
-            <h1>Cálculo de Diámetros de Cañerías</h1>
+            <h1>Cálculo de Diámetros de Cañerías - Método Equivalente</h1>
         </div>
 
         <!-- Botón hamburguesa -->
@@ -40,7 +40,7 @@
 
         <main>
             <!-- Formulario de datos -->
-            <div class="form-section">
+            <div class="form-section" id="formulario-tramo-section">
                 <h2>Datos del Tramo</h2>
                 <div class="form-group">
                     <label for="tramo-nombre">Nombre del Tramo</label>
@@ -57,7 +57,7 @@
                     <input type="number" id="tramo-consumo" placeholder="0">
                     <div style="display: flex; gap: 10px; margin-top: 10px;">
                         <button type="button" id="agregar-consumo-btn" class="btn secondary">Agregar Consumo</button>
-                        <button type="button" id="calcular-btn" class="btn primary">Calcular</button>
+                        <button type="button" id="agregar-tramo-btn" class="btn primary">Agregar Tramo</button>
                     </div>
                 </div>
 
@@ -66,22 +66,17 @@
                     <ul id="lista-consumos"></ul>
                     <p><strong>Total acumulado: <span id="total-consumo">0</span> Kcal/h</strong></p>
                 </div>
-            </div>
 
-            <!-- Resultados -->
-            <div class="form-section" id="resultados-section">
-                <h2>Resultados del Cálculo</h2>
-                <div class="resultados-container" id="resultados-actuales"></div>
-            </div>
-
-            <!-- Resumen Final -->
-            <div class="form-section" id="resumen-final-section">
-                <h2>Resumen Final</h2>
-                <div class="resumen-container" id="resumen-final"></div>
                 <div class="button-group">
-                    <button class="btn secondary" id="descargar-btn">Descargar Datos</button>
-                    <button class="btn primary" id="copiar-btn">Copiar al Portapapeles</button>
+                    <button class="btn secondary" id="finalizar-tramos-btn">Finalizar Trampos y Calcular</button>
+                    <button class="btn cancel" id="cancelar-btn">Cancelar</button>
                 </div>
+            </div>
+
+            <!-- Lista de tramos ingresados -->
+            <div class="form-section" id="lista-tramos-section" style="display: none;">
+                <h2>Tramos Ingresados</h2>
+                <div id="lista-tramos"></div>
             </div>
 
             <!-- Sección de cálculo de diámetro equivalente -->
@@ -89,7 +84,7 @@
                 <h2>Cálculo de Diámetro Equivalente</h2>
                 <div class="tramo-seleccionado">
                     <h3 id="nombre-tramo-actual"></h3>
-                    <p>Diámetro actual: <span id="diametro-actual"></span></p>
+                    <p>Diámetro predimensionado: <span id="diametro-predimensionado"></span></p>
                 </div>
 
                 <div class="accesorios-container">
@@ -141,9 +136,9 @@
                 </div>
 
                 <div class="button-group" id="botonera-equivalente">
-                    <!-- El botón de copiar se insertará aquí dinámicamente si hay tramos guardados -->
                     <button class="btn secondary" id="siguiente-tramo-btn">Siguiente Tramo</button>
                     <button class="btn primary" id="calcular-equivalente-btn">Calcular Diámetro Equivalente</button>
+                    <button class="btn cancel" id="cancelar-equivalente-btn">Cancelar</button>
                 </div>
             </div>
 
@@ -153,11 +148,15 @@
                 <div class="resultados-container" id="resultados-equivalente"></div>
             </div>
 
-            <!-- Botones de control -->
-            <div class="button-group">
-                <button class="btn cancel" id="cancelar-btn">Cancelar</button>
-                <!-- Removido el botón "Calcular" duplicado. El botón "Mostrar Resumen" lleva al mismo flujo. -->
-                <button class="btn primary" id="finalizar-btn">Mostrar Resumen</button>
+            <!-- Resumen Final -->
+            <div class="form-section" id="resumen-final-section" style="display: none;">
+                <h2>Resumen Final</h2>
+                <div class="resumen-container" id="resumen-final"></div>
+                <div class="button-group">
+                    <button class="btn secondary" id="descargar-btn">Descargar Datos</button>
+                    <button class="btn primary" id="copiar-btn">Copiar al Portapapeles</button>
+                    <button class="btn primary" id="nuevo-calculo-btn">Nuevo Cálculo</button>
+                </div>
             </div>
         </main>
     </div>
@@ -183,29 +182,6 @@
     </footer>
 
     <script src="script.js"></script>
-    <script>
-        // Efecto de achicar el header al hacer scroll
-        window.addEventListener("scroll", function () {
-            const header = document.getElementById("main-header");
-            if (window.scrollY > 50) {
-                header.classList.add("shrink");
-            } else {
-                header.classList.remove("shrink");
-            }
-        });
-
-        // Menú hamburguesa
-        const menuToggle = document.getElementById("menu-toggle");
-        const navbar = document.getElementById("navbar");
-
-        menuToggle.addEventListener("click", () => {
-            navbar.classList.toggle("active");
-        });
-        
-        // Las funciones copiarAccesoriosDeTramo y mostrarModalSeleccionTramo
-        // se han movido a script.js para mejor organización.
-        // Por lo tanto, se han eliminado de este bloque para evitar duplicación e interferencias.
-    </script>
 </body>
 
 </html>
