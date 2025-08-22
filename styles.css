@@ -19,6 +19,7 @@ body {
     color: var(--text-color);
     line-height: 1.6;
     padding: 20px;
+    padding-top: 120px; /* Espacio para el header fijo */
 }
 
 .container {
@@ -30,19 +31,193 @@ body {
     padding: 30px;
 }
 
-header {
-    text-align: center;
-    margin-bottom: 30px;
-    padding-bottom: 20px;
-    border-bottom: 1px solid #eee;
+/* ========== HEADER FIJADO - CORRECCIONES PARA MÓVILES ========== */
+.site-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1000;
+    background-color: var(--primary-color);
+    color: white;
+    padding: 15px 20px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    transition: all 0.3s ease;
+    min-height: 80px; /* Altura mínima para evitar cambios bruscos */
 }
 
-header h1 {
-    color: var(--primary-color);
+.site-header.shrink {
+    padding: 8px 20px;
+    min-height: 60px;
+}
+
+.site-header.shrink .logo img {
+    width: 40px;
+    height: 40px;
+}
+
+.site-header.shrink .logo h1 {
+    font-size: 1.2rem;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    max-width: 70%; /* Permitir que se ajuste mejor */
+}
+
+.logo img {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.logo h1 {
+    color: white;
     font-weight: 500;
-    margin-bottom: 10px;
+    margin-bottom: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    font-size: 1.3rem;
 }
 
+/* Navbar */
+.navbar ul {
+    list-style: none;
+    display: flex;
+    gap: 20px;
+    padding: 0;
+    margin: 0;
+}
+
+.navbar a {
+    color: white;
+    text-decoration: none;
+    font-weight: 500;
+    padding: 5px 10px;
+    border-radius: 4px;
+    transition: background 0.3s;
+}
+
+.navbar a:hover {
+    background-color: rgba(255,255,255,0.15);
+}
+
+/* Botón hamburguesa */
+.menu-toggle {
+    display: none;
+    font-size: 1.8rem;
+    cursor: pointer;
+    color: white;
+}
+
+/* ========== RESPONSIVE PARA MÓVILES ========== */
+@media (max-width: 768px) {
+    body {
+        padding-top: 80px !important; /* Reducido para móviles */
+    }
+    
+    /* Header más compacto en móviles */
+    .site-header {
+        padding: 10px 15px;
+        min-height: 70px;
+    }
+    
+    /* Logo más pequeño en móviles */
+    .logo img {
+        width: 35px !important;
+        height: 35px !important;
+    }
+    
+    /* Título más compacto en móviles */
+    .logo h1 {
+        font-size: 1rem !important;
+        line-height: 1.2;
+    }
+    
+    /* Header contraído en móviles */
+    .site-header.shrink {
+        padding: 5px 15px;
+        min-height: 50px;
+    }
+    
+    .site-header.shrink .logo img {
+        width: 30px !important;
+        height: 30px !important;
+    }
+    
+    .site-header.shrink .logo h1 {
+        font-size: 0.9rem !important;
+    }
+
+    .navbar {
+        display: none;
+        width: 100%;
+        background-color: var(--primary-color);
+        order: 3;
+        margin-top: 10px;
+    }
+
+    .navbar.active {
+        display: block;
+    }
+
+    .navbar ul {
+        flex-direction: column;
+        gap: 0;
+    }
+
+    .navbar li {
+        border-top: 1px solid rgba(255,255,255,0.2);
+    }
+
+    .navbar a {
+        display: block;
+        padding: 10px;
+    }
+
+    .menu-toggle {
+        display: block;
+    }
+    
+    .container {
+        padding: 15px;
+    }
+    
+    table {
+        display: block;
+        overflow-x: auto;
+    }
+}
+
+/* Ajustes adicionales para pantallas muy pequeñas */
+@media (max-width: 480px) {
+    body {
+        padding-top: 70px !important;
+    }
+    
+    .logo h1 {
+        font-size: 0.9rem !important;
+    }
+    
+    .container {
+        padding: 10px !important;
+    }
+    
+    .logo {
+        max-width: 60%;
+    }
+}
+
+/* ========== ESTILOS GENERALES ========== */
 #cargando-datos {
     text-align: center;
     padding: 10px;
@@ -173,123 +348,6 @@ input[type="number"]:focus {
     padding: 20px;
 }
 
-@media (max-width: 768px) {
-    .button-group {
-        flex-direction: column;
-    }
-    
-    .container {
-        padding: 15px;
-    }
-    
-    table {
-        display: block;
-        overflow-x: auto;
-    }
-}
-
-/* Encabezado fijo */
-.site-header {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    z-index: 1000;
-    background-color: var(--primary-color);
-    color: white;
-    padding: 15px 20px;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    transition: all 0.3s ease;
-}
-
-body {
-    padding-top: 120px;
-}
-
-.site-header.shrink {
-    padding: 8px 20px;
-}
-
-.site-header.shrink .logo img {
-    width: 40px;
-    height: 40px;
-}
-
-.site-header.shrink .logo h1 {
-    font-size: 1.2rem;
-    
-}
-
-.logo img {
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-}
-
-/* Navbar */
-.navbar ul {
-    list-style: none;
-    display: flex;
-    gap: 20px;
-    padding: 0;
-    margin: 0;
-}
-
-.navbar a {
-    color: white;
-    text-decoration: none;
-    font-weight: 500;
-    padding: 5px 10px;
-    border-radius: 4px;
-    transition: background 0.3s;
-}
-
-.navbar a:hover {
-    background-color: rgba(255,255,255,0.15);
-}
-
-/* Botón hamburguesa */
-.menu-toggle {
-    display: none;
-    font-size: 1.8rem;
-    cursor: pointer;
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-    .navbar {
-        display: none;
-        width: 100%;
-        background-color: var(--primary-color);
-    }
-
-    .navbar.active {
-        display: block;
-    }
-
-    .navbar ul {
-        flex-direction: column;
-        gap: 0;
-    }
-
-    .navbar li {
-        border-top: 1px solid rgba(255,255,255,0.2);
-    }
-
-    .navbar a {
-        display: block;
-        padding: 10px;
-    }
-
-    .menu-toggle {
-        display: block;
-    }
-}
-
 /* Pie de página */
 .site-footer {
     margin-top: 30px;
@@ -306,9 +364,6 @@ body {
 
 .site-footer a:hover {
     text-decoration: underline;
-}
-.logo h1 {
-    color: white !important;
 }
 
 /* ==== Sección Diámetro Equivalente ==== */
