@@ -1,77 +1,86 @@
-// Variables globales
+// ========================= VARIABLES GLOBALES =========================
 let tablaDatos = [];
 let consumosAcumulados = [];
 let totalConsumo = 0;
-let todosLosRegistros = [];
-let indiceTramoActual = 0;
-let accesoriosAcumulados = [];
-let totalEquivalente = 0;
-let tramosConEquivalente = [];
+let todosLosRegistros = [];            // Tramos predimensionados (sin equivalentes)
+let indiceTramoActual = 0;             // Para el flujo de equivalentes
+let accesoriosAcumulados = [];         // Accesorios del tramo actual (equivalentes)
+let totalEquivalente = 0;              // mm del tramo actual
+let tramosConEquivalente = [];         // Tramos con sus accesorios/equivalentes
 let accesorioSeleccionado = null;
 
-// Inicialización
-document.addEventListener('DOMContentLoaded', function() {
-    // Ocultar secciones inicialmente
-    document.getElementById('lista-tramos-section').style.display = 'none';
-    document.getElementById('resumen-final-section').style.display = 'none';
-    document.getElementById('consumos-agregados').style.display = 'none';
-    document.getElementById('cargando-datos').style.display = 'block';
-    document.getElementById('equivalente-section').style.display = 'none';
-    document.getElementById('resultado-equivalente-section').style.display = 'none';
+// ========================= INICIALIZACIÓN =========================
+document.addEventListener('DOMContentLoaded', () => {
+    // Ocultar secciones que no van al inicio
+    byId('lista-tramos-section').style.display = 'none';
+    byId('resumen-final-section').style.display = 'none';
+    byId('consumos-agregados').style.display = 'none';
+    byId('equivalente-section').style.display = 'none';
+    byId('resultado-equivalente-section').style.display = 'none';
+    byId('cargando-datos').style.display = 'block';
 
-    // Cargar datos y configurar eventos
     cargarDatosTabla().finally(() => {
-        document.getElementById('cargando-datos').style.display = 'none';
+        byId('cargando-datos').style.display = 'none';
         configurarEventos();
         configurarEventosModal();
     });
 });
 
-// =================== MODAL PRINCIPAL (Diámetro Accesorios) =================== //
+// ========================= UTILIDADES BÁSICAS =========================
+function byId(id){ return document.getElementById(id); }
+
+function mostrarMensaje(msg, tipo='info') {
+    // Simple y efectivo. Si querés toasts, después le metemos un componente.
+    const prefix = { info:'ℹ️', success:'✅', warning:'⚠️', error:'❌' }[tipo] || 'ℹ️';
+    console.log(`${prefix} ${msg}`);
+    alert(`${prefix} ${msg}`);
+}
+
+function mostrarConfirmacion(msg, onOk) {
+    if (confirm(msg)) onOk?.();
+}
+
+// ========================= MODAL DE ACCESORIOS =========================
 function configurarEventosModal() {
     const closeBtn = document.querySelector('#modal-diametro .close-modal');
     if (closeBtn) closeBtn.addEventListener('click', cerrarModal);
-    const confirmar = document.getElementById('confirmar-diametro-btn');
+    const confirmar = byId('confirmar-diametro-btn');
     if (confirmar) confirmar.addEventListener('click', confirmarAccesorio);
 }
 
 function abrirModal() {
-    document.getElementById('nombre-accesorio-modal').textContent = accesorioSeleccionado.nombre;
-    document.getElementById('diametro-accesorio').value = '';
+    byId('nombre-accesorio-modal').textContent = accesorioSeleccionado.nombre;
+    byId('diametro-accesorio').value = '';
 
-    // Mostrar sugerencia de diámetro del tramo actual
-    const anteriorSugerencia = document.querySelector('.diametro-sugerido');
-    if (anteriorSugerencia) anteriorSugerencia.remove();
+    // sugerencia de diámetro (del tramo actual)
+    const anterior = document.querySelector('.diametro-sugerido');
+    if (anterior) anterior.remove();
 
     const tramoActual = todosLosRegistros[indiceTramoActual];
-    if (tramoActual && tramoActual.diametroNumerico) {
-        const sug = document.createElement('p');
-        sug.className = 'diametro-sugerido';
-        sug.textContent = `Diámetro sugerido para este tramo: ${tramoActual.diametro}`;
-        document.querySelector('#modal-diametro .modal-content').appendChild(sug);
+    if (tramoActual && tramoActual.diametro) {
+        const p = document.createElement('p');
+        p.className = 'diametro-sugerido';
+        p.textContent = `Diámetro sugerido para este tramo: ${tramoActual.diametro}`;
+        document.querySelector('#modal-diametro .modal-content').appendChild(p);
     }
 
-    document.getElementById('modal-diametro').classList.add('is-active');
+    byId('modal-diametro').classList.add('is-active');
 }
+function cerrarModal() { byId('modal-diametro').classList.remove('is-active'); }
 
-function cerrarModal() {
-    document.getElementById('modal-diametro').classList.remove('is-active');
-}
-
-// =============== CARGA DE DATOS TABLA JSON =============== //
+// ========================= CARGA DE TABLA JSON =========================
 async function cargarDatosTabla() {
     try {
-        const response = await fetch('./data/convertcsv.json');
-        if (!response.ok) throw new Error(`Error al cargar datos: ${response.status}`);
-        const datosCrudos = await response.json();
+        const resp = await fetch('./data/convertcsv.json');
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const datosCrudos = await resp.json();
         tablaDatos = transformarDatos(datosCrudos);
-        console.log('Datos de tabla cargados:', tablaDatos);
-    } catch (error) {
-        console.error('Error al cargar JSON:', error);
-        mostrarMensaje('Error al cargar los datos de la tabla. Por favor, recargue la página.', 'error');
+        console.log('Tabla cargada:', tablaDatos);
+    } catch (e) {
+        console.error(e);
+        mostrarMensaje('Error al cargar los datos de la tabla. Recargá la página.', 'error');
     }
 }
-
 function transformarDatos(datosCrudos) {
     const columnas = datosCrudos[0];
     return datosCrudos.slice(1).map(fila => {
@@ -84,166 +93,139 @@ function transformarDatos(datosCrudos) {
     });
 }
 
-// =============== EVENTOS GENERALES DEL FORMULARIO PRINCIPAL =============== //
+// ========================= EVENTOS (FORM PRINCIPAL) =========================
 function configurarEventos() {
-    // Evento para agregar consumo
-    document.getElementById('agregar-consumo-btn').addEventListener('click', function() {
-        const inputConsumo = document.getElementById('tramo-consumo');
-        const consumo = parseFloat(inputConsumo.value);
-        if (!isNaN(consumo)) {
-            if (consumo > 0) {
-                consumosAcumulados.push(consumo);
-                totalConsumo += consumo;
-                actualizarListaConsumos();
-                inputConsumo.value = '';
-            } else {
-                mostrarMensaje('El consumo debe ser mayor que 0', 'warning');
-            }
-        } else {
-            mostrarMensaje('Ingrese un valor numérico válido para el consumo', 'warning');
-        }
+    // Agregar consumo simple (suma al acumulado)
+    byId('agregar-consumo-btn').addEventListener('click', () => {
+        const v = parseFloat(byId('tramo-consumo').value);
+        if (isNaN(v)) return mostrarMensaje('Ingrese un valor numérico válido para el consumo', 'warning');
+        if (v <= 0)  return mostrarMensaje('El consumo debe ser mayor que 0', 'warning');
+        consumosAcumulados.push(v);
+        totalConsumo += v;
+        actualizarListaConsumos();
+        byId('tramo-consumo').value = '';
     });
 
-    // Evento para agregar tramo
-    document.getElementById('agregar-tramo-btn').addEventListener('click', function() {
+    // Agregar tramo (mostrar inmediatamente el último)
+    byId('agregar-tramo-btn').addEventListener('click', () => {
         if (tablaDatos.length === 0) {
-            mostrarMensaje('Los datos de la tabla aún no se han cargado. Por favor, espere.', 'info');
-            return;
+            return mostrarMensaje('La tabla aún no se cargó. Espere un instante.', 'info');
         }
 
-        const nombreTramo = document.getElementById('tramo-nombre').value.trim() || 'Sin nombre';
-        const longitudReal = parseFloat(document.getElementById('tramo-longitud').value) || 0;
+        const nombreTramo = (byId('tramo-nombre').value || '').trim() || 'Sin nombre';
+        const longitudReal = parseFloat(byId('tramo-longitud').value) || 0;
+        if (longitudReal <= 0) return mostrarMensaje('Ingrese una longitud válida (> 0)', 'warning');
 
-        if (longitudReal <= 0) {
-            mostrarMensaje('Debe ingresar una longitud válida para el tramo', 'warning');
-            return;
-        }
-
-        let consumoTotal;
+        let consumoTotal = 0;
         if (consumosAcumulados.length > 0) {
             consumoTotal = totalConsumo;
         } else {
-            const consumoInput = parseFloat(document.getElementById('tramo-consumo').value) || 0;
-            if (consumoInput > 0) {
-                consumoTotal = consumoInput;
-            } else {
-                mostrarMensaje('Debe ingresar al menos un consumo válido para el tramo', 'warning');
-                return;
-            }
+            const unico = parseFloat(byId('tramo-consumo').value) || 0;
+            if (unico <= 0) return mostrarMensaje('Ingrese al menos un consumo válido', 'warning');
+            consumoTotal = unico;
         }
 
-        // Calcular diámetro predimensionado
         const resultados = calcularDiametroPredimensionado(nombreTramo, longitudReal, consumoTotal);
         todosLosRegistros.push(resultados);
-        
-        // Actualizar lista de tramos
-        actualizarListaTramos();
-        
-        // Limpiar el formulario
-        document.getElementById('tramo-nombre').value = '';
-        document.getElementById('tramo-longitud').value = '';
-        document.getElementById('tramo-consumo').value = '';
+
+        // Mostrar la sección + render inmediato del último tramo
+        byId('lista-tramos-section').style.display = 'block';
+        appendUltimoTramo(resultados);   // <— muestra el tramo recién ingresado
+
+        // Limpiar formulario para seguir cargando
+        byId('tramo-nombre').value = '';
+        byId('tramo-longitud').value = '';
+        byId('tramo-consumo').value = '';
         consumosAcumulados = [];
         totalConsumo = 0;
-        document.getElementById('lista-consumos').innerHTML = '';
-        document.getElementById('total-consumo').textContent = '0';
-        document.getElementById('consumos-agregados').style.display = 'none';
-        
+        byId('lista-consumos').innerHTML = '';
+        byId('total-consumo').textContent = '0';
+        byId('consumos-agregados').style.display = 'none';
+
         mostrarMensaje('Tramo agregado correctamente', 'success');
     });
 
-    // Evento para finalizar ingreso de tramos
-    document.getElementById('finalizar-tramos-btn').addEventListener('click', function() {
+    // Finalizar tramos → pasar a equivalentes
+    byId('finalizar-tramos-btn').addEventListener('click', () => {
         if (todosLosRegistros.length === 0) {
-            mostrarMensaje('Debe agregar al menos un tramo antes de continuar', 'warning');
-            return;
+            return mostrarMensaje('Agregue al menos un tramo antes de continuar', 'warning');
         }
-        
-        document.getElementById('formulario-tramo-section').style.display = 'none';
-        document.getElementById('lista-tramos-section').style.display = 'block';
-        
-        // Iniciar cálculo de equivalente
+        byId('formulario-tramo-section').style.display = 'none';
+        byId('lista-tramos-section').style.display = 'block';
         iniciarCalculoEquivalente();
     });
 
-    // Evento para cancelar
-    document.getElementById('cancelar-btn').addEventListener('click', function() {
-        mostrarConfirmacion('¿Está seguro de cancelar? Se perderán todos los datos ingresados.', reiniciarFormulario);
+    byId('cancelar-btn').addEventListener('click', () => {
+        mostrarConfirmacion('¿Cancelar? Se perderán los datos ingresados.', reiniciarFormulario);
+    });
+    byId('cancelar-equivalente-btn').addEventListener('click', () => {
+        mostrarConfirmacion('¿Cancelar? Se perderán los datos ingresados.', reiniciarFormulario);
     });
 
-    // Evento para cancelar el cálculo equivalente
-    document.getElementById('cancelar-equivalente-btn').addEventListener('click', function() {
-        mostrarConfirmacion('¿Está seguro de cancelar? Se perderán todos los datos ingresados.', reiniciarFormulario);
-    });
-
-    // Evento para descargar datos CSV
-    document.getElementById('descargar-btn').addEventListener('click', descargarDatos);
-
-    // Evento para copiar datos al portapapeles
-    document.getElementById('copiar-btn').addEventListener('click', copiarDatos);
-
-    // Evento para nuevo cálculo
-    document.getElementById('nuevo-calculo-btn').addEventListener('click', function() {
-        mostrarConfirmacion('¿Desea comenzar un nuevo cálculo? Se perderán los datos actuales.', reiniciarFormulario);
+    byId('descargar-pdf-btn').addEventListener('click', generarPDFCompleto);
+    byId('descargar-csv-btn').addEventListener('click', descargarDatos);
+    byId('copiar-btn').addEventListener('click', copiarDatos);
+    byId('nuevo-calculo-btn').addEventListener('click', () => {
+        mostrarConfirmacion('¿Nuevo cálculo? Se borrarán los datos actuales.', reiniciarFormulario);
     });
 }
 
-// =============== CÁLCULOS PRINCIPALES =============== //
+// ========================= CÁLCULOS PRINCIPALES =========================
 function calcularDiametroPredimensionado(nombreTramo, longitudReal, consumoTotal) {
-    const caudalCalculo = (consumoTotal / 9300) * 1000; // Caudal en m³/h
-    const diametro = encontrarDiametro(caudalCalculo, longitudReal);
-    
-    // Asegura que el diámetro numérico sea válido
-    const diametroNumerico = parseFloat(diametro.columna.split(' ')[0].replace(',', '.'));
-    
+    const caudalCalculo = (consumoTotal / 9300) * 1000; // m³/h
+    const di = encontrarDiametro(caudalCalculo, longitudReal); // busca en tabla por longitud y caudal
+    const diametroNumerico = parseFloat(String(di.columna).split(' ')[0].replace(',', '.'));
     return {
         nombreTramo,
         longitudReal,
         consumoTotal,
         caudalCalculo,
-        diametro: diametro.columna,
+        diametro: di.columna,                      // ej: "20 mm"
         diametroNumerico: isNaN(diametroNumerico) ? 0 : diametroNumerico,
-        valorCaudal: diametro.valor,
+        valorCaudal: di.valor,                     // el valor de tabla usado
         fecha: new Date().toLocaleString()
     };
 }
 
+// Busca el valor superior en una columna
 function encontrarValorSuperior(valor, columna) {
     const valores = tablaDatos.map(item => item[columna]).sort((a, b) => a - b);
-    return valores.find(v => v >= valor) || valores[valores.length - 1];
+    return valores.find(v => v >= valor) ?? valores[valores.length - 1];
 }
 
+// Busca el diámetro (columna) que cumple el caudal para la fila de longitud adecuada
 function encontrarDiametro(caudal, longitudTabla, tolerancia = 0.0001) {
-    // Busca la fila que corresponde a la longitud de tabla o la más cercana superior
+    // Fila cuya "longitud" es >= a la requerida (o la última)
     const fila = tablaDatos.find(f => parseFloat(f.longitud) >= longitudTabla) || tablaDatos[tablaDatos.length - 1];
+
     let columnaEncontrada = null;
     let valorEncontrado = null;
 
-    // Itera sobre las columnas para encontrar el diámetro adecuado
+    // Recorre columnas (todas menos "longitud")
     for (const [columna, valor] of Object.entries(fila)) {
         if (columna === 'longitud') continue;
-        const valorNum = parseFloat(valor);
-        if (valorNum >= caudal) {
+        const v = parseFloat(valor);
+        if (v >= caudal) {
             columnaEncontrada = columna;
-            valorEncontrado = valorNum;
+            valorEncontrado = v;
             break;
         }
     }
 
-    // Si no se encuentra un valor directamente superior, busca por tolerancia
+    // Si no encontró, tolera diferencias relativas pequeñas
     if (!columnaEncontrada) {
         for (const [columna, valor] of Object.entries(fila)) {
             if (columna === 'longitud') continue;
-            const valorNum = parseFloat(valor);
-            if (Math.abs(valorNum - caudal) / caudal <= tolerancia) {
+            const v = parseFloat(valor);
+            if (Math.abs(v - caudal) / caudal <= tolerancia) {
                 columnaEncontrada = columna;
-                valorEncontrado = valorNum;
+                valorEncontrado = v;
                 break;
             }
         }
     }
 
-    // Si aún no se encuentra, toma el diámetro más grande disponible
+    // Si sigue sin encontrar, toma el mayor disponible
     if (!columnaEncontrada) {
         const cols = Object.entries(fila).filter(([c]) => c !== 'longitud');
         const ultima = cols[cols.length - 1];
@@ -251,20 +233,23 @@ function encontrarDiametro(caudal, longitudTabla, tolerancia = 0.0001) {
         valorEncontrado = parseFloat(ultima[1]);
     }
 
-    return { columna: columnaEncontrada, valor: valorEncontrado };
+    // Normalizamos el nombre de columna a "NN mm" si fuese necesario
+    const etiqueta = /^\d+(\,\d+)?\s*mm$/i.test(columnaEncontrada) ? columnaEncontrada : `${columnaEncontrada} mm`;
+    return { columna: etiqueta, valor: valorEncontrado };
 }
 
-// =============== UI: LISTAS Y RESULTADOS =============== //
+// ========================= UI (LISTAS Y RENDER) =========================
 function actualizarListaConsumos() {
-    const lista = document.getElementById('lista-consumos');
-    lista.innerHTML = consumosAcumulados.map((consumo, i) => `<li>Consumo ${i + 1}: ${consumo} Kcal/h</li>`).join('');
-    document.getElementById('total-consumo').textContent = totalConsumo;
-    document.getElementById('consumos-agregados').style.display = 'block';
+    const lista = byId('lista-consumos');
+    lista.innerHTML = consumosAcumulados.map((c, i) => `<li>Consumo ${i + 1}: ${c} Kcal/h</li>`).join('');
+    byId('total-consumo').textContent = String(totalConsumo);
+    byId('consumos-agregados').style.display = 'block';
 }
 
+// Render completo de la tabla de tramos (si lo necesitás)
 function actualizarListaTramos() {
-    const lista = document.getElementById('lista-tramos');
-    lista.innerHTML = `
+    const cont = byId('lista-tramos');
+    cont.innerHTML = `
         <h3>Tramos ingresados (${todosLosRegistros.length})</h3>
         <table>
             <thead>
@@ -272,89 +257,78 @@ function actualizarListaTramos() {
                     <th>Tramo</th>
                     <th>Longitud (m)</th>
                     <th>Consumo (Kcal/h)</th>
+                    <th>Caudal (m³/h)</th>
                     <th>Diámetro Predimensionado</th>
                 </tr>
             </thead>
             <tbody>
-                ${todosLosRegistros.map((tramo, index) => `
+                ${todosLosRegistros.map(t => `
                     <tr>
-                        <td>${tramo.nombreTramo}</td>
-                        <td>${tramo.longitudReal}</td>
-                        <td>${tramo.consumoTotal}</td>
-                        <td>${tramo.diametro}</td>
-                    </tr>
-                `).join('')}
+                        <td>${t.nombreTramo}</td>
+                        <td>${t.longitudReal}</td>
+                        <td>${t.consumoTotal}</td>
+                        <td>${t.caudalCalculo.toFixed(2)}</td>
+                        <td><strong>${t.diametro}</strong></td>
+                    </tr>`).join('')}
             </tbody>
         </table>
     `;
 }
 
-// =============== DIÁMETROS EQUIVALENTES FUNCTIONS =============== //
+// Render incremental del último tramo (lo que pediste)
+function appendUltimoTramo(tramo) {
+    // Si es el primero, creo toda la tabla; si no, solo agrego fila
+    const cont = byId('lista-tramos');
+    if (!cont.querySelector('table')) {
+        actualizarListaTramos();
+    } else {
+        const tbody = cont.querySelector('tbody');
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${tramo.nombreTramo}</td>
+            <td>${tramo.longitudReal}</td>
+            <td>${tramo.consumoTotal}</td>
+            <td>${tramo.caudalCalculo.toFixed(2)}</td>
+            <td><strong>${tramo.diametro}</strong></td>
+        `;
+        tbody.appendChild(tr);
+    }
+
+    // scroll a la última fila para "feedback" visual
+    requestAnimationFrame(() => {
+        const lastRow = cont.querySelector('tbody tr:last-child');
+        lastRow?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+}
+
+// ========================= FLUJO EQUIVALENTES =========================
 function iniciarCalculoEquivalente() {
     indiceTramoActual = 0;
-    document.getElementById('lista-tramos-section').style.display = 'none';
-    document.getElementById('equivalente-section').style.display = 'block';
+    byId('lista-tramos-section').style.display = 'none';
+    byId('equivalente-section').style.display = 'block';
     mostrarTramoActual();
     configurarEventosAccesorios();
 }
 
 function mostrarTramoActual() {
     const tramo = todosLosRegistros[indiceTramoActual];
-    document.getElementById('nombre-tramo-actual').textContent = tramo.nombreTramo;
-    document.getElementById('diametro-predimensionado').textContent = tramo.diametro;
+    byId('nombre-tramo-actual').textContent = tramo.nombreTramo;
+    byId('diametro-predimensionado').textContent = tramo.diametro;
+
+    // reset accesorios del tramo actual
     accesoriosAcumulados = [];
     totalEquivalente = 0;
     actualizarListaAccesorios();
-
-    // Actualizar botones de navegación
-    const siguienteBtn = document.getElementById('siguiente-tramo-btn');
-    const calcularBtn = document.getElementById('calcular-equivalente-btn');
-    
-    if (indiceTramoActual < todosLosRegistros.length - 1) {
-        siguienteBtn.style.display = 'inline-block';
-        calcularBtn.style.display = 'none';
-        siguienteBtn.textContent = `Siguiente Tramo (${indiceTramoActual + 1}/${todosLosRegistros.length})`;
-    } else {
-        siguienteBtn.style.display = 'none';
-        calcularBtn.style.display = 'inline-block';
-    }
-
-    // Logic to show/hide "Copiar accesorios" button
-    const botonera = document.getElementById('botonera-equivalente');
-    let copiarBtn = document.getElementById('copiar-accesorios-btn');
-
-    if (tramosConEquivalente.length > 0) {
-        // Si hay tramos para copiar Y el botón no existe, crearlo
-        if (!copiarBtn) {
-            copiarBtn = document.createElement('button');
-            copiarBtn.id = 'copiar-accesorios-btn';
-            copiarBtn.className = 'btn secondary';
-            copiarBtn.textContent = 'Copiar accesorios de otro tramo';
-            copiarBtn.addEventListener('click', mostrarModalSeleccionTramo);
-            botonera.insertBefore(copiarBtn, botonera.firstChild);
-        } else {
-            // Si el botón ya existe y hay tramos para copiar, asegurarse de que esté visible
-            copiarBtn.style.display = 'inline-block';
-        }
-    } else {
-        // Si no hay tramos para copiar, ocultar el botón si existe
-        if (copiarBtn) {
-            copiarBtn.style.display = 'none';
-        }
-    }
 }
 
 function configurarEventosAccesorios() {
-    // Evitar duplicar listeners al re-entrar a la sección de accesorios
+    // limpiar listeners duplicados
+    document.querySelectorAll('.accesorio-btn').forEach(btn => btn.replaceWith(btn.cloneNode(true)));
+    // agregar listeners
     document.querySelectorAll('.accesorio-btn').forEach(btn => {
-        btn.replaceWith(btn.cloneNode(true));
-    });
-    
-    // Añadir listeners a los nuevos (o reemplazados) botones
-    document.querySelectorAll('.accesorio-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            accesorioSeleccionado = { 
-                nombre: this.dataset.nombre, 
+        btn.addEventListener('click', function () {
+            accesorioSeleccionado = {
+                nombre: this.dataset.nombre,
                 valor: parseFloat(this.dataset.valor),
                 id: Date.now() + Math.floor(Math.random() * 1000)
             };
@@ -362,37 +336,45 @@ function configurarEventosAccesorios() {
         });
     });
 
-    const sig = document.getElementById('siguiente-tramo-btn');
-    if (sig) sig.onclick = function() {
+    // Configurar botón para copiar accesorios
+    const copiarBtn = byId('copiar-accesorios-btn');
+    if (copiarBtn) {
+        copiarBtn.onclick = mostrarModalSeleccionTramo;
+    }
+
+    const sig = byId('siguiente-tramo-btn');
+    if (sig) sig.onclick = () => {
         guardarTramoEquivalente();
         indiceTramoActual++;
+        if (indiceTramoActual >= todosLosRegistros.length) {
+            indiceTramoActual = todosLosRegistros.length - 1;
+            return mostrarMensaje('Ya estás en el último tramo.', 'info');
+        }
         mostrarTramoActual();
     };
 
-    const calc = document.getElementById('calcular-equivalente-btn');
-    if (calc) calc.onclick = function() {
+    const calc = byId('calcular-equivalente-btn');
+    if (calc) calc.onclick = () => {
         guardarTramoEquivalente();
         calcularYMostrarEquivalente();
     };
 }
 
 function confirmarAccesorio() {
-    const diametro = parseFloat(document.getElementById('diametro-accesorio').value);
-    if (isNaN(diametro) || diametro <= 0) {
-        mostrarMensaje('Ingrese un diámetro válido (mayor que 0)', 'warning');
-        return;
-    }
+    const diametro = parseFloat(byId('diametro-accesorio').value);
+    if (isNaN(diametro) || diametro <= 0) return mostrarMensaje('Ingrese un diámetro válido (> 0)', 'warning');
+
     if (diametro > 100) {
-        mostrarConfirmacion(`¿Está seguro que el diámetro es ${diametro}mm? Los valores típicos son entre 6-50mm.`, () => {
-            procesarConfirmacionAccesorio(diametro);
-        });
-    } else {
-        procesarConfirmacionAccesorio(diametro);
+        return mostrarConfirmacion(
+            `¿Seguro que el diámetro es ${diametro} mm? Los valores típicos suelen estar entre 6 dan 50 mm.`,
+            () => procesarConfirmacionAccesorio(diametro)
+        );
     }
+    procesarConfirmacionAccesorio(diametro);
 }
 
 function procesarConfirmacionAccesorio(diametro) {
-    const equivalente = accesorioSeleccionado.valor * diametro;
+    const equivalente = accesorioSeleccionado.valor * diametro; // mm
     totalEquivalente += equivalente;
 
     accesoriosAcumulados.push({
@@ -408,40 +390,41 @@ function procesarConfirmacionAccesorio(diametro) {
 }
 
 function actualizarListaAccesorios() {
-    const lista = document.getElementById('lista-accesorios');
+    const lista = byId('lista-accesorios');
     lista.innerHTML = accesoriosAcumulados.map(a => `
         <li>
             ${a.nombre} (${a.valorBase} × ${a.diametroUsado}mm): <strong>${a.valor} mm</strong>
             <button class="btn-eliminar-accesorio" data-id="${a.id}" title="Eliminar accesorio">×</button>
         </li>
     `).join('');
-    
-    document.getElementById('total-equivalente').textContent = totalEquivalente.toFixed(2);
-    
+
+    byId('total-equivalente').textContent = totalEquivalente.toFixed(2);
+
+    // listeners de eliminación
     document.querySelectorAll('.btn-eliminar-accesorio').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const id = parseInt(this.dataset.id);
+        btn.addEventListener('click', function () {
+            const id = parseInt(this.dataset.id, 10);
             eliminarAccesorio(id);
         });
     });
 }
 
 function eliminarAccesorio(id) {
-    const index = accesoriosAcumulados.findIndex(a => a.id === id);
-    if (index !== -1) {
-        totalEquivalente -= parseFloat(accesoriosAcumulados[index].valor);
-        accesoriosAcumulados.splice(index, 1);
+    const idx = accesoriosAcumulados.findIndex(a => a.id === id);
+    if (idx !== -1) {
+        totalEquivalente -= parseFloat(accesoriosAcumulados[idx].valor);
+        accesoriosAcumulados.splice(idx, 1);
         actualizarListaAccesorios();
         mostrarMensaje('Accesorio eliminado.', 'success');
     }
 }
 
 function guardarTramoEquivalente() {
-    const tramoOriginal = todosLosRegistros[indiceTramoActual];
-    // Almacena una copia de los accesorios acumulados y el total equivalente
+    const base = todosLosRegistros[indiceTramoActual];
+    // Guardamos copia defensiva
     tramosConEquivalente.push({
-        ...tramoOriginal,
-        accesorios: [...accesoriosAcumulados],
+        ...base,
+        accesorios: accesoriosAcumulados.map(a => ({ ...a })), // copia
         totalEquivalenteMM: totalEquivalente,
         totalEquivalenteM: totalEquivalente / 1000
     });
@@ -449,11 +432,9 @@ function guardarTramoEquivalente() {
 
 function mostrarModalSeleccionTramo() {
     if (tramosConEquivalente.length === 0) {
-        mostrarMensaje('No hay tramos con accesorios guardados para copiar.', 'info');
-        return;
+        return mostrarMensaje('No hay tramos con accesorios guardados para copiar.', 'info');
     }
-    
-    // Crear modal de selección
+
     const modal = document.createElement('div');
     modal.className = 'modal';
     modal.id = 'modal-seleccion-tramo';
@@ -462,13 +443,13 @@ function mostrarModalSeleccionTramo() {
             <span class="close-modal" onclick="document.getElementById('modal-seleccion-tramo').remove();">&times;</span>
             <h3>Seleccione el tramo a copiar</h3>
             <div style="max-height: 300px; overflow-y: auto;">
-                <ul id="lista-tramos-copiar" style="list-style: none; padding: 0;">
-                    ${tramosConEquivalente.map((tramo, index) => `
-                        <li style="padding: 10px; border-bottom: 1px solid #eee; cursor: pointer;" 
-                            onclick="copiarAccesoriosDeTramo(${index})">
-                            <strong>${tramo.nombreTramo}</strong> (${tramo.diametro})
-                            <div style="font-size: 0.9em; color: #666;">
-                                ${tramo.accesorios.length} accesorios - Total: ${tramo.totalEquivalenteMM.toFixed(2)} mm
+                <ul id="lista-tramos-copiar" style="list-style: none; padding: 0; margin: 0;">
+                    ${tramosConEquivalente.map((t, i) => `
+                        <li style="padding:10px;border-bottom:1px solid #eee;cursor:pointer;"
+                            onclick="copiarAccesoriosDeTramo(${i})">
+                            <strong>${t.nombreTramo}</strong> (${t.diametro})
+                            <div style="font-size:.9em;color:#666;">
+                                ${t.accesorios.length} accesorios - Total: ${t.totalEquivalenteMM.toFixed(2)} mm
                             </div>
                         </li>
                     `).join('')}
@@ -476,57 +457,54 @@ function mostrarModalSeleccionTramo() {
             </div>
         </div>
     `;
-    
     document.body.appendChild(modal);
     modal.classList.add('is-active');
 }
 
 function copiarAccesoriosDeTramo(indexTramo) {
-    const tramoSeleccionado = tramosConEquivalente[indexTramo];
-    if (!tramoSeleccionado) return;
-    
-    mostrarConfirmacion(`¿Desea copiar los ${tramoSeleccionado.accesorios.length} accesorios de "${tramoSeleccionado.nombreTramo}" a este tramo?`, () => {
-        // Copiar accesorios con nuevos IDs para evitar conflictos
-        accesoriosAcumulados = tramoSeleccionado.accesorios.map(a => ({
-            ...a,
-            id: Date.now() + Math.floor(Math.random() * 1000)
-        }));
-        
-        totalEquivalente = tramoSeleccionado.totalEquivalenteMM;
+    const origen = tramosConEquivalente[indexTramo];
+    if (!origen) return;
+    mostrarConfirmacion(`¿Copiar ${origen.accesorios.length} accesorios de "${origen.nombreTramo}" a este tramo?`, () => {
+        accesoriosAcumulados = origen.accesorios.map(a => ({ ...a, id: Date.now() + Math.floor(Math.random()*1000) }));
+        totalEquivalente = origen.totalEquivalenteMM;
         actualizarListaAccesorios();
-        
-        // Cerrar y eliminar modal de selección de tramo
-        const modal = document.getElementById('modal-seleccion-tramo');
-        if (modal) modal.remove();
+        const modal = byId('modal-seleccion-tramo');
+        modal?.remove();
         mostrarMensaje('Accesorios copiados exitosamente.', 'success');
     });
 }
 
 function getResultadosEquivalente() {
     return tramosConEquivalente.map(tramo => {
-        const longitudTotal = tramo.longitudReal + (tramo.totalEquivalenteMM / 1000);
+        const longitudEquivalenteM = tramo.totalEquivalenteMM / 1000;
+        const longitudTotal = tramo.longitudReal + longitudEquivalenteM;
         const longitudTabla = encontrarValorSuperior(longitudTotal, 'longitud');
-        const caudal = tramo.caudalCalculo;
-        const diametroEquivalente = encontrarDiametro(caudal, longitudTabla);
-        
+        const diEq = encontrarDiametro(tramo.caudalCalculo, longitudTabla);
+
         return {
-            ...tramo,
+            // base
+            nombreTramo: tramo.nombreTramo,
+            longitudReal: tramo.longitudReal,
+            consumoTotal: tramo.consumoTotal,
+            caudalCalculo: tramo.caudalCalculo,
+            diametro: tramo.diametro,
+
+            // equivalentes
+            accesorios: tramo.accesorios.map(a => ({ ...a })),
             longitudEquivalenteMM: tramo.totalEquivalenteMM,
-            longitudEquivalenteM: tramo.totalEquivalenteMM / 1000,
+            longitudEquivalenteM,
             longitudTotal,
             longitudTablaEquivalente: longitudTabla,
-            diametroEquivalente: diametroEquivalente.columna,
-            valorCaudalEquivalente: diametroEquivalente.valor
+            diametroEquivalente: diEq.columna,
+            valorCaudalEquivalente: diEq.valor
         };
     });
 }
 
-// ... resto del script sin cambios previos
-
 function calcularYMostrarEquivalente() {
-    const resultadosEquivalente = getResultadosEquivalente();
+    const resultados = getResultadosEquivalente();
+    const container = byId('resultados-equivalente');
 
-    const container = document.getElementById('resultados-equivalente');
     container.innerHTML = `
         <h3>Resumen de Diámetros Equivalentes</h3>
         <table>
@@ -545,7 +523,7 @@ function calcularYMostrarEquivalente() {
                 </tr>
             </thead>
             <tbody>
-                ${resultadosEquivalente.map(t => `
+                ${resultados.map(t => `
                     <tr>
                         <td>${t.nombreTramo}</td>
                         <td>${t.longitudReal} m</td>
@@ -561,9 +539,9 @@ function calcularYMostrarEquivalente() {
                 `).join('')}
             </tbody>
         </table>
-        
-        <h4 style="margin-top: 30px;">Detalle de Accesorios por Tramo</h4>
-        ${resultadosEquivalente.map(t => `
+
+        <h4 style="margin-top: 24px;">Detalle de Accesorios por Tramo</h4>
+        ${resultados.map(t => `
             <div class="tramo-accesorios">
                 <h5>Tramo: ${t.nombreTramo}</h5>
                 <ul class="lista-detallada-accesorios">
@@ -574,86 +552,59 @@ function calcularYMostrarEquivalente() {
                 <p><strong>Total equivalente para este tramo: ${t.longitudEquivalenteMM.toFixed(2)} mm (${t.longitudEquivalenteM.toFixed(2)} m)</strong></p>
             </div>
         `).join('')}
-        
+
         <div class="button-group" style="margin-top: 20px;">
-            <button class="btn secondary" style="background-color: #2ecc71; color: white;" id="generar-pdf-equivalente-btn">Descargar PDF</button>
-            <button class="btn secondary" style="background-color: #3498db; color: white;" id="descargar-csv-btn">Descargar CSV</button>
-            <button class="btn primary" style="background-color: #f39c12; color: white;" id="copiar-equivalente-btn">Copiar al Portapapeles</button>
-            <button class="btn cancel" style="background-color: #e74c3c; color: white;" id="nuevo-calculo-equivalente-btn">Nuevo Cálculo</button>
+            <button class="btn secondary" style="background-color:#2ecc71;color:#fff;" id="generar-pdf-equivalente-btn">Descargar PDF</button>
+            <button class="btn secondary" style="background-color:#3498db;color:#fff;" id="descargar-csv-equivalente-btn">Descargar CSV</button>
+            <button class="btn primary"   style="background-color:#f39c12;color:#fff;" id="copiar-equivalente-btn">Copiar al Portapapeles</button>
+            <button class="btn cancel"    style="background-color:#e74c3c;color:#fff;" id="nuevo-calculo-equivalente-btn">Nuevo Cálculo</button>
         </div>
     `;
 
-    // Evento para descargar PDF de solo equivalentes
-    document.getElementById('generar-pdf-equivalente-btn').addEventListener('click', () => {
-        mostrarConfirmacion('¿Desea generar un reporte en PDF de solo los cálculos de equivalentes?', generarPDFEquivalente);
+    // Eventos de la botonera
+    byId('generar-pdf-equivalente-btn').addEventListener('click', () => {
+        mostrarConfirmacion('¿Generar reporte PDF sólo de equivalentes?', generarPDFEquivalente);
+    });
+    byId('descargar-csv-equivalente-btn').addEventListener('click', descargarDatos);
+    byId('copiar-equivalente-btn').addEventListener('click', copiarDatos);
+    byId('nuevo-calculo-equivalente-btn').addEventListener('click', () => {
+        mostrarConfirmacion('¿Comenzar un nuevo cálculo?', reiniciarFormulario);
     });
 
-    // Nuevo: eventos para CSV, Copiar y Nuevo Cálculo
-    document.getElementById('descargar-csv-btn').addEventListener('click', descargarDatos);
-    document.getElementById('copiar-equivalente-btn').addEventListener('click', copiarDatos);
-    document.getElementById('nuevo-calculo-equivalente-btn').addEventListener('click', () => {
-        mostrarConfirmacion('¿Desea comenzar un nuevo cálculo? Se borrarán todos los datos anteriores.', reiniciarFormulario);
-    });
+    // Mostrar sección de resultados
+    byId('equivalente-section').style.display = 'none';
+    byId('resultado-equivalente-section').style.display = 'block';
+    byId('resumen-final-section').style.display = 'block';
 
-    // Ocultar secciones anteriores
-    document.getElementById('equivalente-section').style.display = 'none';
-    document.getElementById('resultado-equivalente-section').style.display = 'block';
-}
-
-
-function mostrarResumen() {
-    const container = document.getElementById('resumen-final');
-
-    if (tramosConEquivalente.length === 0) {
-        container.innerHTML = '<p class="empty-message">No hay datos registrados</p>';
-    } else {
-        const resultadosEquivalente = getResultadosEquivalente();
-        
-        container.innerHTML = `
-            <h3>Resumen Final de Cálculos</h3>
-            <table>
-                <thead>
+    // Generar el resumen final
+    const resumenFinal = byId('resumen-final');
+    resumenFinal.innerHTML = `
+        <h3>Resumen Final</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Tramo</th>
+                    <th>Diámetro Predimensionado</th>
+                    <th>Diámetro Equivalente</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${resultados.map(t => `
                     <tr>
-                        <th>Tramo</th>
-                        <th>Long. Real</th>
-                        <th>Equiv. (mm)</th>
-                        <th>Equiv. (m)</th>
-                        <th>Long. Total</th>
-                        <th>Long. Tabla</th>
-                        <th>Consumo</th>
-                        <th>Caudal Calc.</th>
-                        <th>Caudal Tabla</th>
-                        <th>Diámetro</th>
+                        <td>${t.nombreTramo}</td>
+                        <td>${t.diametro}</td>
+                        <td>${t.diametroEquivalente}</td>
                     </tr>
-                </thead>
-                <tbody>
-                    ${resultadosEquivalente.map(t => `
-                        <tr>
-                            <td>${t.nombreTramo}</td>
-                            <td>${t.longitudReal} m</td>
-                            <td>${t.longitudEquivalenteMM.toFixed(2)} mm</td>
-                            <td>${t.longitudEquivalenteM.toFixed(2)} m</td>
-                            <td>${t.longitudTotal.toFixed(2)} m</td>
-                            <td>${t.longitudTablaEquivalente} m</td>
-                            <td>${t.consumoTotal} Kcal/h</td>
-                            <td>${t.caudalCalculo.toFixed(2)}</td>
-                            <td>${t.valorCaudalEquivalente}</td>
-                            <td class="diametro">${t.diametroEquivalente}</td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-        `;
-    }
-
-    document.getElementById('resumen-final-section').style.display = 'block';
-    document.getElementById('resultado-equivalente-section').style.display = 'none';
+                `).join('')}
+            </tbody>
+        </table>
+    `;
 }
 
+// ========================= PDF / CSV / COPIAR =========================
 function generarPDFEquivalente() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
-
     doc.setFont('helvetica');
     doc.setFontSize(12);
 
@@ -668,12 +619,12 @@ function generarPDFEquivalente() {
     doc.setTextColor(46, 204, 113);
     doc.text('Informe de Diámetros Equivalentes', 15, 20);
 
-    const resultadosEq = getResultadosEquivalente();
+    const resultados = getResultadosEquivalente();
 
     doc.autoTable({
         startY: 30,
-        head: [['Tramo', 'Long. Real', 'Equiv. (mm)', 'Equiv. (m)', 'Long. Total', 'Long. Tabla', 'Consumo', 'Caudal Calc.', 'Caudal Tabla', 'Diámetro']],
-        body: resultadosEq.map(t => [
+        head: [['Tramo','Long. Real','Equiv. (mm)','Equiv. (m)','Long. Total','Long. Tabla','Consumo','Caudal Calc.','Caudal Tabla','Diámetro']],
+        body: resultados.map(t => [
             t.nombreTramo,
             `${t.longitudReal} m`,
             t.longitudEquivalenteMM.toFixed(2),
@@ -690,28 +641,29 @@ function generarPDFEquivalente() {
     });
 
     // Detalle de accesorios por tramo
-    const lastY2 = doc.lastAutoTable.finalY + 10;
+    const lastY = doc.lastAutoTable.finalY + 10;
     doc.setFontSize(12);
-    doc.text('Detalle de Accesorios por Tramo', 15, lastY2);
+    doc.setTextColor(0);
+    doc.text('Detalle de Accesorios por Tramo', 15, lastY);
 
     tramosConEquivalente.forEach((tramo, index) => {
-        const startY = (index === 0) ? lastY2 + 10 : doc.lastAutoTable.finalY + 10;
+        const startY = (index === 0) ? lastY + 8 : doc.lastAutoTable.finalY + 10;
         doc.setFontSize(10);
         doc.setTextColor(52, 152, 219);
         doc.text(`Tramo: ${tramo.nombreTramo} (${tramo.diametro})`, 15, startY);
 
         doc.autoTable({
             startY: startY + 5,
-            head: [['Accesorio', 'Factor', 'Diámetro (mm)', 'Equivalente (mm)']],
+            head: [['Accesorio','Factor','Diám. (mm)','Equivalente (mm)']],
             body: tramo.accesorios.map(a => [a.nombre, a.valorBase, a.diametroUsado, a.valor]),
             styles: { fontSize: 7 },
-            headStyles: { fillColor: [128, 128, 128], textColor: 255 },
+            headStyles: { fillColor: [128,128,128], textColor: 255 },
             margin: { left: 20 }
         });
 
         doc.setFontSize(8);
         doc.setTextColor(0);
-        doc.text(`→ Total equivalente: ${tramo.totalEquivalenteMM.toFixed(2)} mm (${(tramo.totalEquivalenteMM/1000).toFixed(2)} m)`, 20, doc.lastAutoTable.finalY + 8);
+        doc.text(`→ Total equivalente: ${tramo.totalEquivalenteMM.toFixed(2)} mm (${(tramo.totalEquivalenteMM/1000).toFixed(2)} m)`, 20, doc.lastAutoTable.finalY + 6);
     });
 
     // Pie
@@ -721,19 +673,141 @@ function generarPDFEquivalente() {
 
     doc.save(`Calculo_Equivalente_${new Date().toISOString().slice(0,10)}.pdf`);
 }
-// =============== UTILIDADES VARIAS =============== //
+
+function generarPDFCompleto() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    doc.setFont('helvetica');
+    doc.setFontSize(12);
+
+    try {
+        const imgData = 'img/logo_gas_color.png';
+        doc.addImage(imgData, 'PNG', 160, 10, 35, 15);
+    } catch (e) {
+        console.log('Logo no encontrado, continuando sin él');
+    }
+
+    doc.setFontSize(16);
+    doc.setTextColor(46, 204, 113);
+    doc.text('Informe Completo de Cálculos', 15, 20);
+    doc.setFontSize(12);
+    doc.setTextColor(0);
+    doc.text(`Fecha: ${new Date().toLocaleString()}`, 15, 30);
+
+    const resultados = getResultadosEquivalente();
+
+    // Resumen de todos los tramos
+    doc.autoTable({
+        startY: 40,
+        head: [['Tramo','Long. Real','Equiv. (mm)','Equiv. (m)','Long. Total','Long. Tabla','Consumo','Caudal Calc.','Caudal Tabla','Diámetro']],
+        body: resultados.map(t => [
+            t.nombreTramo,
+            `${t.longitudReal} m`,
+            t.longitudEquivalenteMM.toFixed(2),
+            t.longitudEquivalenteM.toFixed(2),
+            t.longitudTotal.toFixed(2) + ' m',
+            `${t.longitudTablaEquivalente} m`,
+            `${t.consumoTotal} Kcal/h`,
+            t.caudalCalculo.toFixed(2),
+            t.valorCaudalEquivalente,
+            t.diametroEquivalente
+        ]),
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [46, 204, 113], textColor: 255 }
+    });
+
+    // Detalle de accesorios por tramo
+    const lastY = doc.lastAutoTable.finalY + 10;
+    doc.setFontSize(12);
+    doc.setTextColor(0);
+    doc.text('Detalle de Accesorios por Tramo', 15, lastY);
+
+    tramosConEquivalente.forEach((tramo, index) => {
+        const startY = (index === 0) ? lastY + 8 : doc.lastAutoTable.finalY + 10;
+        doc.setFontSize(10);
+        doc.setTextColor(52, 152, 219);
+        doc.text(`Tramo: ${tramo.nombreTramo} (${tramo.diametro})`, 15, startY);
+
+        doc.autoTable({
+            startY: startY + 5,
+            head: [['Accesorio','Factor','Diám. (mm)','Equivalente (mm)']],
+            body: tramo.accesorios.map(a => [a.nombre, a.valorBase, a.diametroUsado, a.valor]),
+            styles: { fontSize: 7 },
+            headStyles: { fillColor: [128,128,128], textColor: 255 },
+            margin: { left: 20 }
+        });
+
+        doc.setFontSize(8);
+        doc.setTextColor(0);
+        doc.text(`→ Total equivalente: ${tramo.totalEquivalenteMM.toFixed(2)} mm (${(tramo.totalEquivalenteMM/1000).toFixed(2)} m)`, 20, doc.lastAutoTable.finalY + 6);
+    });
+
+    // Pie
+    doc.setFontSize(8);
+    doc.setTextColor(100);
+    doc.text('Generado con Herramienta de Cálculo de Diámetros - ' + new Date().toLocaleString(), 15, 285);
+
+    doc.save(`Calculo_Completo_${new Date().toISOString().slice(0,10)}.pdf`);
+}
+
+function descargarDatos() {
+    if (tramosConEquivalente.length === 0) {
+        return mostrarMensaje('No hay datos para descargar en CSV.', 'info');
+    }
+    const resultados = getResultadosEquivalente();
+    let csv = 'Nombre,Longitud Real,Long. Equiv. (mm),Long. Equiv. (m),Long. Total,Long. Tabla,Consumo,Caudal Cálculo,Caudal Tabla,Diámetro\n';
+    csv += resultados.map(t =>
+        `"${t.nombreTramo}",${t.longitudReal},${t.longitudEquivalenteMM.toFixed(2)},${t.longitudEquivalenteM.toFixed(2)},${t.longitudTotal.toFixed(2)},${t.longitudTablaEquivalente},${t.consumoTotal},${t.caudalCalculo.toFixed(2)},${t.valorCaudalEquivalente},${t.diametroEquivalente}`
+    ).join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `equivalentes_${Date.now()}.csv`;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+}
+
+async function copiarDatos() {
+    if (tramosConEquivalente.length === 0) {
+        return mostrarMensaje('No hay datos para copiar.', 'info');
+    }
+    const resultados = getResultadosEquivalente();
+    const texto = [
+        'Resumen de Diámetros Equivalentes',
+        'Tramo | Long.Real | Equiv(mm) | Equiv(m) | Long.Total | Long.Tabla | Consumo | CaudalCalc | CaudalTabla | Diámetro',
+        ...resultados.map(t => `${t.nombreTramo} | ${t.longitudReal} | ${t.longitudEquivalenteMM.toFixed(2)} | ${t.longitudEquivalenteM.toFixed(2)} | ${t.longitudTotal.toFixed(2)} | ${t.longitudTablaEquivalente} | ${t.consumoTotal} | ${t.caudalCalculo.toFixed(2)} | ${t.valorCaudalEquivalente} | ${t.diametroEquivalente}`)
+    ].join('\n');
+
+    try {
+        await navigator.clipboard.writeText(texto);
+        mostrarMensaje('Datos copiados al portapapeles.', 'success');
+    } catch {
+        // Fallback
+        const ta = document.createElement('textarea');
+        ta.value = texto;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        ta.remove();
+        mostrarMensaje('Datos copiados al portapapeles (fallback).', 'success');
+    }
+}
+
+// ========================= RESET =========================
 function reiniciarFormulario() {
-    document.getElementById('tramo-nombre').value = '';
-    document.getElementById('tramo-longitud').value = '';
-    document.getElementById('tramo-consumo').value = '';
-    document.getElementById('lista-consumos').innerHTML = '';
-    document.getElementById('total-consumo').textContent = '0';
-    document.getElementById('lista-tramos').innerHTML = '';
-    document.getElementById('formulario-tramo-section').style.display = 'block';
-    document.getElementById('lista-tramos-section').style.display = 'none';
-    document.getElementById('resumen-final-section').style.display = 'none';
-    document.getElementById('equivalente-section').style.display = 'none';
-    document.getElementById('resultado-equivalente-section').style.display = 'none';
+    byId('tramo-nombre').value = '';
+    byId('tramo-longitud').value = '';
+    byId('tramo-consumo').value = '';
+    byId('lista-consumos').innerHTML = '';
+    byId('total-consumo').textContent = '0';
+    byId('lista-tramos').innerHTML = '';
+    byId('formulario-tramo-section').style.display = 'block';
+    byId('lista-tramos-section').style.display = 'none';
+    byId('resumen-final-section').style.display = 'none';
+    byId('equivalente-section').style.display = 'none';
+    byId('resultado-equivalente-section').style.display = 'none';
+
     consumosAcumulados = [];
     totalConsumo = 0;
     todosLosRegistros = [];
@@ -741,156 +815,6 @@ function reiniciarFormulario() {
     accesoriosAcumulados = [];
     totalEquivalente = 0;
     tramosConEquivalente = [];
-    
-    // Ocultar el botón de copiar si no hay tramos
-    const copiarBtn = document.getElementById('copiar-accesorios-btn');
-    if (copiarBtn) copiarBtn.style.display = 'none';
-    
-    mostrarMensaje('Formulario reiniciado. Puede comenzar un nuevo cálculo.', 'info');
-}
 
-function descargarDatos() {
-    if (tramosConEquivalente.length === 0) {
-        mostrarMensaje('No hay datos para descargar en formato CSV.', 'info');
-        return;
-    }
-
-    const resultadosEquivalente = getResultadosEquivalente();
-    
-    let csv = 'Nombre,Longitud Real,Longitud Equivalente (mm),Longitud Equivalente (m),Longitud Total,Longitud Tabla,Consumo,Caudal Cálculo,Caudal Tabla,Diámetro,Fecha\n';
-    resultadosEquivalente.forEach(reg => {
-        csv += `"${reg.nombreTramo}",${reg.longitudReal},${reg.longitudEquivalenteMM.toFixed(2)},${reg.longitudEquivalenteM.toFixed(2)},${reg.longitudTotal.toFixed(2)},${reg.longitudTablaEquivalente},${reg.consumoTotal},${reg.caudalCalculo.toFixed(2)},${reg.valorCaudalEquivalente},"${reg.diametroEquivalente}","${reg.fecha}"\n`;
-    });
-
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `calculos_equivalentes_${new Date().toISOString().slice(0,10)}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    mostrarMensaje('Datos descargados en CSV.', 'success');
-}
-
-function copiarDatos() {
-    if (tramosConEquivalente.length === 0) {
-        mostrarMensaje('No hay datos para copiar al portapapeles.', 'info');
-        return;
-    }
-
-    const resultadosEquivalente = getResultadosEquivalente();
-    
-    const texto = resultadosEquivalente.map(reg => 
-        `Tramo: ${reg.nombreTramo}\n` +
-        `Longitud Real: ${reg.longitudReal} m\n` +
-        `Longitud Equivalente: ${reg.longitudEquivalenteMM.toFixed(2)} mm (${reg.longitudEquivalenteM.toFixed(2)} m)\n` +
-        `Longitud Total: ${reg.longitudTotal.toFixed(2)} m\n` +
-        `Longitud Tabla: ${reg.longitudTablaEquivalente} m\n` +
-        `Consumo Total: ${reg.consumoTotal} Kcal/h\n` +
-        `Caudal Cálculo: ${reg.caudalCalculo.toFixed(2)} m³/h\n` +
-        `Caudal Tabla: ${reg.valorCaudalEquivalente}\n` +
-        `Diámetro: ${reg.diametroEquivalente}\n` +
-        `Fecha: ${reg.fecha}\n` +
-        '------------------------'
-    ).join('\n');
-
-    navigator.clipboard.writeText(texto).then(() => {
-        mostrarMensaje('Datos copiados al portapapeles.', 'success');
-    }).catch(err => {
-        console.error('Error al copiar:', err);
-        mostrarMensaje('Error al copiar los datos al portapapeles.', 'error');
-    });
-}
-
-// =============== FUNCIONES DE MENSAJES/MODALES PERSONALIZADOS =============== //
-function mostrarMensaje(mensaje, tipo = 'info', duracion = 3000) {
-    let mensajeBox = document.getElementById('custom-message-box');
-    if (!mensajeBox) {
-        mensajeBox = document.createElement('div');
-        mensajeBox.id = 'custom-message-box';
-        mensajeBox.style.cssText = `
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            padding: 15px 25px;
-            border-radius: 8px;
-            color: white;
-            font-weight: bold;
-            z-index: 3000;
-            opacity: 0;
-            transition: opacity 0.3s ease-in-out;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        `;
-        document.body.appendChild(mensajeBox);
-    }
-
-    mensajeBox.innerHTML = '';
-    let bgColor = '';
-    let icon = '';
-
-    switch (tipo) {
-        case 'success':
-            bgColor = '#2ecc71';
-            icon = '✔';
-            break;
-        case 'error':
-            bgColor = '#e74c3c';
-            icon = '✖';
-            break;
-        case 'warning':
-            bgColor = '#f39c12';
-            icon = '⚠';
-            break;
-        case 'info':
-        default:
-            bgColor = '#3498db';
-            icon = 'ℹ';
-            break;
-    }
-
-    mensajeBox.style.backgroundColor = bgColor;
-    mensajeBox.innerHTML = `<span style="font-size: 1.2em;">${icon}</span> ${mensaje}`;
-    mensajeBox.style.opacity = '1';
-
-    setTimeout(() => {
-        mensajeBox.style.opacity = '0';
-        setTimeout(() => {
-            mensajeBox.remove();
-        }, 300);
-    }, duracion);
-}
-
-function mostrarConfirmacion(mensaje, onConfirm) {
-    const existingModal = document.getElementById('custom-confirm-modal');
-    if (existingModal) existingModal.remove();
-
-    const modal = document.createElement('div');
-    modal.id = 'custom-confirm-modal';
-    modal.className = 'modal';
-    modal.innerHTML = `
-        <div class="modal-content" style="max-width: 400px; text-align: center;">
-            <h3>Confirmar Acción</h3>
-            <p>${mensaje}</p>
-            <div class="button-group" style="justify-content: center; margin-top: 20px;">
-                <button class="btn primary" id="confirm-btn-yes">Sí</button>
-                <button class="btn cancel" id="confirm-btn-no">No</button>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(modal);
-    modal.classList.add('is-active');
-
-    document.getElementById('confirm-btn-yes').onclick = () => {
-        modal.classList.remove('is-active');
-        onConfirm();
-    };
-    document.getElementById('confirm-btn-no').onclick = () => {
-        modal.classList.remove('is-active');
-    };
+    mostrarMensaje('Formulario reiniciado. Podés comenzar un nuevo cálculo.', 'info');
 }

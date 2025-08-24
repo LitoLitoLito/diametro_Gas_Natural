@@ -407,6 +407,8 @@ input[type="number"]:focus {
     max-width: 50px;
     max-height: 50px;
     margin-bottom: 6px;
+    background-color: transparent !important; /* Fuerza transparencia */
+    mix-blend-mode: multiply; /* Mejora la visualización de PNG transparentes */
 }
 
 .accesorio-btn span {
@@ -590,4 +592,19 @@ input[type="number"]:focus {
 .form-group .btn {
     margin-top: 0;
     flex: 1;
+}
+
+/* Asegurar que las imágenes en modales también mantengan transparencia */
+.modal-content img {
+    background-color: transparent !important;
+}
+
+/* Estilo para cuando las imágenes no cargan */
+img[src*=".png"] {
+    background-color: transparent !important;
+}
+
+/* Corrección para mostrar transparencia en elementos con imágenes */
+.accesorio-btn:hover img {
+    background-color: transparent !important;
 }
