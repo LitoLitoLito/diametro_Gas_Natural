@@ -257,7 +257,7 @@ function actualizarListaTramos() {
                     <th>Tramo</th>
                     <th>Longitud (m)</th>
                     <th>Consumo (Kcal/h)</th>
-                    <th>Caudal (m³/h)</th>
+                    <th>Caudal (litros/h)</th>
                     <th>Diámetro Predimensionado</th>
                 </tr>
             </thead>
@@ -532,7 +532,7 @@ function calcularYMostrarEquivalente() {
                         <td>${t.longitudTotal.toFixed(2)} m</td>
                         <td>${t.longitudTablaEquivalente} m</td>
                         <td>${t.consumoTotal} Kcal/h</td>
-                        <td>${t.caudalCalculo.toFixed(2)}</td>
+                        <td>${t.caudalCalculo.toFixed(2)} li/h</td>
                         <td>${t.valorCaudalEquivalente}</td>
                         <td class="diametro">${t.diametroEquivalente}</td>
                     </tr>
