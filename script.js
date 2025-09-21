@@ -30,7 +30,6 @@ document.addEventListener('DOMContentLoaded', () => {
 function byId(id){ return document.getElementById(id); }
 
 function mostrarMensaje(msg, tipo='info') {
-    // Simple y efectivo. Si querés toasts, después le metemos un componente.
     const prefix = { info:'ℹ️', success:'✅', warning:'⚠️', error:'❌' }[tipo] || 'ℹ️';
     console.log(`${prefix} ${msg}`);
     alert(`${prefix} ${msg}`);
@@ -51,6 +50,7 @@ function configurarEventosModal() {
 function abrirModal() {
     byId('nombre-accesorio-modal').textContent = accesorioSeleccionado.nombre;
     byId('diametro-accesorio').value = '';
+    byId('cantidad-accesorio').value = '1'; // Valor por defecto
 
     // sugerencia de diámetro (del tramo actual)
     const anterior = document.querySelector('.diametro-sugerido');
@@ -66,6 +66,7 @@ function abrirModal() {
 
     byId('modal-diametro').classList.add('is-active');
 }
+
 function cerrarModal() { byId('modal-diametro').classList.remove('is-active'); }
 
 // ========================= CARGA DE TABLA JSON =========================
@@ -362,19 +363,22 @@ function configurarEventosAccesorios() {
 
 function confirmarAccesorio() {
     const diametro = parseFloat(byId('diametro-accesorio').value);
+    const cantidad = parseInt(byId('cantidad-accesorio').value) || 1;
+    
     if (isNaN(diametro) || diametro <= 0) return mostrarMensaje('Ingrese un diámetro válido (> 0)', 'warning');
+    if (isNaN(cantidad) || cantidad <= 0) return mostrarMensaje('Ingrese una cantidad válida (> 0)', 'warning');
 
     if (diametro > 100) {
         return mostrarConfirmacion(
             `¿Seguro que el diámetro es ${diametro} mm? Los valores típicos suelen estar entre 6 dan 50 mm.`,
-            () => procesarConfirmacionAccesorio(diametro)
+            () => procesarConfirmacionAccesorio(diametro, cantidad)
         );
     }
-    procesarConfirmacionAccesorio(diametro);
+    procesarConfirmacionAccesorio(diametro, cantidad);
 }
 
-function procesarConfirmacionAccesorio(diametro) {
-    const equivalente = accesorioSeleccionado.valor * diametro; // mm
+function procesarConfirmacionAccesorio(diametro, cantidad) {
+    const equivalente = accesorioSeleccionado.valor * diametro * cantidad; // mm
     totalEquivalente += equivalente;
 
     accesoriosAcumulados.push({
@@ -382,7 +386,8 @@ function procesarConfirmacionAccesorio(diametro) {
         nombre: accesorioSeleccionado.nombre,
         valor: equivalente.toFixed(2),
         diametroUsado: diametro,
-        valorBase: accesorioSeleccionado.valor
+        valorBase: accesorioSeleccionado.valor,
+        cantidad: cantidad
     });
 
     actualizarListaAccesorios();
@@ -393,7 +398,7 @@ function actualizarListaAccesorios() {
     const lista = byId('lista-accesorios');
     lista.innerHTML = accesoriosAcumulados.map(a => `
         <li>
-            ${a.nombre} (${a.valorBase} × ${a.diametroUsado}mm): <strong>${a.valor} mm</strong>
+            ${a.cantidad} ${a.nombre} (${a.valorBase} × ${a.diametroUsado}mm × ${a.cantidad}): <strong>${a.valor} mm</strong>
             <button class="btn-eliminar-accesorio" data-id="${a.id}" title="Eliminar accesorio">×</button>
         </li>
     `).join('');
@@ -474,12 +479,24 @@ function copiarAccesoriosDeTramo(indexTramo) {
     });
 }
 
+// Función para formatear diámetros con la excepción especial
+function formatearDiametro(diametro) {
+    // Si el diámetro es 9.5 mm (1/8"), mostrar como 13 mm (1/2")
+    if (diametro === "9.5 mm" || diametro === "9,5 mm" || diametro.includes("1/8")) {
+        return "13 mm (1/2\")";
+    }
+    return diametro;
+}
+
 function getResultadosEquivalente() {
     return tramosConEquivalente.map(tramo => {
         const longitudEquivalenteM = tramo.totalEquivalenteMM / 1000;
         const longitudTotal = tramo.longitudReal + longitudEquivalenteM;
         const longitudTabla = encontrarValorSuperior(longitudTotal, 'longitud');
         const diEq = encontrarDiametro(tramo.caudalCalculo, longitudTabla);
+        
+        // Aplicar formato especial si es necesario
+        const diametroEquivalenteFormateado = formatearDiametro(diEq.columna);
 
         return {
             // base
@@ -496,6 +513,7 @@ function getResultadosEquivalente() {
             longitudTotal,
             longitudTablaEquivalente: longitudTabla,
             diametroEquivalente: diEq.columna,
+            diametroEquivalenteFormateado: diametroEquivalenteFormateado,
             valorCaudalEquivalente: diEq.valor
         };
     });
@@ -534,7 +552,7 @@ function calcularYMostrarEquivalente() {
                         <td>${t.consumoTotal} Kcal/h</td>
                         <td>${t.caudalCalculo.toFixed(2)} li/h</td>
                         <td>${t.valorCaudalEquivalente}</td>
-                        <td class="diametro">${t.diametroEquivalente}</td>
+                        <td class="diametro">${t.diametroEquivalenteFormateado}</td>
                     </tr>
                 `).join('')}
             </tbody>
@@ -546,7 +564,7 @@ function calcularYMostrarEquivalente() {
                 <h5>Tramo: ${t.nombreTramo}</h5>
                 <ul class="lista-detallada-accesorios">
                     ${t.accesorios.map(a => `
-                        <li>${a.nombre} (${a.valorBase} × ${a.diametroUsado}mm): <strong>${a.valor} mm</strong></li>
+                        <li>${a.cantidad} ${a.nombre} (${a.valorBase} × ${a.diametroUsado}mm × ${a.cantidad}): <strong>${a.valor} mm</strong></li>
                     `).join('')}
                 </ul>
                 <p><strong>Total equivalente para este tramo: ${t.longitudEquivalenteMM.toFixed(2)} mm (${t.longitudEquivalenteM.toFixed(2)} m)</strong></p>
@@ -593,7 +611,7 @@ function calcularYMostrarEquivalente() {
                     <tr>
                         <td>${t.nombreTramo}</td>
                         <td>${t.diametro}</td>
-                        <td>${t.diametroEquivalente}</td>
+                        <td>${t.diametroEquivalenteFormateado}</td>
                     </tr>
                 `).join('')}
             </tbody>
@@ -634,7 +652,7 @@ function generarPDFEquivalente() {
             `${t.consumoTotal} Kcal/h`,
             t.caudalCalculo.toFixed(2),
             t.valorCaudalEquivalente,
-            t.diametroEquivalente
+            t.diametroEquivalenteFormateado
         ]),
         styles: { fontSize: 8 },
         headStyles: { fillColor: [46, 204, 113], textColor: 255 }
@@ -654,8 +672,8 @@ function generarPDFEquivalente() {
 
         doc.autoTable({
             startY: startY + 5,
-            head: [['Accesorio','Factor','Diám. (mm)','Equivalente (mm)']],
-            body: tramo.accesorios.map(a => [a.nombre, a.valorBase, a.diametroUsado, a.valor]),
+            head: [['Accesorio','Cantidad','Factor','Diám. (mm)','Equivalente (mm)']],
+            body: tramo.accesorios.map(a => [a.nombre, a.cantidad, a.valorBase, a.diametroUsado, a.valor]),
             styles: { fontSize: 7 },
             headStyles: { fillColor: [128,128,128], textColor: 255 },
             margin: { left: 20 }
@@ -710,7 +728,7 @@ function generarPDFCompleto() {
             `${t.consumoTotal} Kcal/h`,
             t.caudalCalculo.toFixed(2),
             t.valorCaudalEquivalente,
-            t.diametroEquivalente
+            t.diametroEquivalenteFormateado
         ]),
         styles: { fontSize: 8 },
         headStyles: { fillColor: [46, 204, 113], textColor: 255 }
@@ -730,8 +748,8 @@ function generarPDFCompleto() {
 
         doc.autoTable({
             startY: startY + 5,
-            head: [['Accesorio','Factor','Diám. (mm)','Equivalente (mm)']],
-            body: tramo.accesorios.map(a => [a.nombre, a.valorBase, a.diametroUsado, a.valor]),
+            head: [['Accesorio','Cantidad','Factor','Diám. (mm)','Equivalente (mm)']],
+            body: tramo.accesorios.map(a => [a.nombre, a.cantidad, a.valorBase, a.diametroUsado, a.valor]),
             styles: { fontSize: 7 },
             headStyles: { fillColor: [128,128,128], textColor: 255 },
             margin: { left: 20 }
@@ -757,7 +775,7 @@ function descargarDatos() {
     const resultados = getResultadosEquivalente();
     let csv = 'Nombre,Longitud Real,Long. Equiv. (mm),Long. Equiv. (m),Long. Total,Long. Tabla,Consumo,Caudal Cálculo,Caudal Tabla,Diámetro\n';
     csv += resultados.map(t =>
-        `"${t.nombreTramo}",${t.longitudReal},${t.longitudEquivalenteMM.toFixed(2)},${t.longitudEquivalenteM.toFixed(2)},${t.longitudTotal.toFixed(2)},${t.longitudTablaEquivalente},${t.consumoTotal},${t.caudalCalculo.toFixed(2)},${t.valorCaudalEquivalente},${t.diametroEquivalente}`
+        `"${t.nombreTramo}",${t.longitudReal},${t.longitudEquivalenteMM.toFixed(2)},${t.longitudEquivalenteM.toFixed(2)},${t.longitudTotal.toFixed(2)},${t.longitudTablaEquivalente},${t.consumoTotal},${t.caudalCalculo.toFixed(2)},${t.valorCaudalEquivalente},${t.diametroEquivalenteFormateado}`
     ).join('\n');
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -776,7 +794,7 @@ async function copiarDatos() {
     const texto = [
         'Resumen de Diámetros Equivalentes',
         'Tramo | Long.Real | Equiv(mm) | Equiv(m) | Long.Total | Long.Tabla | Consumo | CaudalCalc | CaudalTabla | Diámetro',
-        ...resultados.map(t => `${t.nombreTramo} | ${t.longitudReal} | ${t.longitudEquivalenteMM.toFixed(2)} | ${t.longitudEquivalenteM.toFixed(2)} | ${t.longitudTotal.toFixed(2)} | ${t.longitudTablaEquivalente} | ${t.consumoTotal} | ${t.caudalCalculo.toFixed(2)} | ${t.valorCaudalEquivalente} | ${t.diametroEquivalente}`)
+        ...resultados.map(t => `${t.nombreTramo} | ${t.longitudReal} | ${t.longitudEquivalenteMM.toFixed(2)} | ${t.longitudEquivalenteM.toFixed(2)} | ${t.longitudTotal.toFixed(2)} | ${t.longitudTablaEquivalente} | ${t.consumoTotal} | ${t.caudalCalculo.toFixed(2)} | ${t.valorCaudalEquivalente} | ${t.diametroEquivalenteFormateado}`)
     ].join('\n');
 
     try {
